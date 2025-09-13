@@ -40,7 +40,7 @@ enable_torus_fill = false;
 /* [Cribbage Board Settings] */
 
 // What to render
-render_mode = 6; // [0:Mobius Strip Only, 1:Hole Cylinders Only, 2:Both (for visualization), 3:Markers Only, 4:Holes and Markers, 5:Strip Holes and Markers, 6:All with Grooves, 7:Grooves Only]
+render_mode = 6; // [0:Mobius Strip Only, 1:Hole Cylinders Only, 2:Both (for visualization), 3:Markers Only, 4:Holes and Markers, 5:Strip Holes and Markers, 6:All with Grooves, 7:Grooves Only, 8:Edge Decoration Only]
 
 // Number of columns of holes
 cribbage_columns = 4; // [1:6]
@@ -53,6 +53,8 @@ hole_diameter = 3.1; // [0.5:0.1:10.0]
 
 // Length of hole cylinders (should be longer than strip width)
 hole_length = 10; // [10:50]
+
+enable_edge_decoration = true;
 
 /* [Groove Settings] */
 
@@ -139,11 +141,20 @@ if (render_mode == 0) {
   if (enable_grooves) {
     color("green", 0.6) CribbageGrooves();
   }
+  if (enable_edge_decoration) {
+          color("purple") CubeEdgeDecoration();
+      }
 } else if (render_mode == 7) {
   // Render only the grooves
   if (enable_grooves) {
     color("green") CribbageGrooves();
   }
+  }
+  else if (render_mode == 8) {
+      // Render only the cube decorations
+      if (enable_edge_decoration) {
+          color("purple") CubeEdgeDecoration();
+      }
 }
 
 module CribbageGrooves() {
@@ -288,6 +299,73 @@ module CreateHoleCylinder() {
   // Create a cylinder long enough to go through the strip
   cylinder(d=hole_diameter, h=hole_length, center=true, $fn=12);
 }
+
+
+
+module CubeEdgeDecoration() {
+  // Create a pattern of cubes to intersect the edge of the strip.
+  offset = width + edge_offset - work_round_edge*0.6;
+  surface_offset = 0;
+    
+  // Exponential distribution (adjustable clustering)
+function exponential_angles(n_points, curve_factor=2) = 
+    [for(i=[0:n_points-1]) 
+        let(t = i/(n_points-1))
+        -360 * (pow(curve_factor, t) - 1) / (curve_factor - 1)
+    ];
+    
+  // Exponential distribution (adjustable clustering)
+function reverse_exponential_angles(n_points, curve_factor=2) = 
+    [for(i=[0:n_points-1]) 
+        let(t = i/(n_points-1))
+        -360 * (1 - (pow(curve_factor, 1-t) - 1) / (curve_factor - 1))
+    ];
+
+  
+  reverse_angles = reverse_exponential_angles(360/4.5,.7);  
+  angles = exponential_angles(360/4.5,.7);  
+      
+  union() {
+      for(angle=angles) {  // Changed to go clockwise
+        CreateCubeDecoration(angle, -offset, surface_offset, 50);  
+    }
+    for(angle=reverse_angles) {
+        CreateCubeDecoration(angle, offset, surface_offset, -50);
+
+    }
+  }
+}
+
+module CreateCubeDecoration(angle, offset, surface_offset, angle_offset) {
+  // Create one section of the decoration at the given angle and offset
+  // surface_offset positions the groove on inner or outer surface
+  rotate([0, 0, angle])
+    translate([size/2 - width - work_round_edge, 0, 0])
+      rotate([angle_offset, twists * angle / points, 0])
+        translate([offset, surface_offset, 0])  // surface_offset should be on Y-axis, not Z-axis
+          rotate([0, (angle_offset < 0) ? -90 : 90, 0])  // Orient groove to cut into the surface properly
+            CreateCubeDecorationShape();
+}
+
+module CreateCubeDecorationShape() {
+  // These angle work for a specific size. No idea if they're general.
+  difference() {
+  cylinder(h=work_round_edge*0.75, d1=work_round_edge*2.75, d2=0, center=true, $fn=4);
+  
+  union() {
+  rotate([0,90,0])
+      translate([-work_round_edge*0.20,0,0])
+        cylinder(h=work_round_edge*2.75, d=work_round_edge*1.25, center=true, $fn=3);
+      
+  rotate([90,-30,0])
+      translate([0.35,.5,0])
+        cylinder(h=work_round_edge*2.75, d=work_round_edge*1.25, center=true, $fn=3);    
+  }
+  }
+}
+
+
+
 
 module Mobius()
 {
