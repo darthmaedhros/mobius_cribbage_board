@@ -202,26 +202,25 @@ module CreateGrooveShape() {
 }
 
 module CribbageMarkers() {
-  // Calculate angle per hole to distribute evenly around the strip
-  angle_per_hole = -360 / cribbage_rows;  // Changed to negative for clockwise
-  
-  // Create markers at every marker_interval holes
-  for(row = [0:marker_interval:cribbage_rows-1]) {
-    // Calculate angle for this marker (same as hole positioning)
-    marker_angle = (row + 0.5) * angle_per_hole;
-    
+  // Calculate angle per total segment of 5 holes
+  num_segments = cribbage_rows / marker_interval;
+  angle_per_segment = -360 / num_segments;
+
+  for(segment = [0:num_segments-1]) {
+      marker_angle = segment*angle_per_segment;
+          
     // Upper surface: normal numbering (0, 5, 10, 15, etc.)
-    upper_text = (row == 0) ? "START/FINISH" :
-                 str(row);
+    upper_text = (segment == 0) ? "START/FINISH" :
+                 str(segment*marker_interval);
     
     // Lower surface: offset numbering (60, 5, 10, 15, etc.)
     // For cribbage, the opposite side typically shows 60 points ahead
-    lower_row = (row) % 60;  // Changed: offset by 30 and wrap at 60
+    lower_row = (segment*marker_interval) % 60;  // Changed: offset by 30 and wrap at 60
     lower_text = (lower_row == 30) ? "S" :  // S at 30 on the offset side
                  str(lower_row + 60);
     
     // Create upper surface marker with gap
-    CreateMarkerSlice(marker_angle, work_round_edge - marker_depth, upper_text, true, row);
+    CreateMarkerSlice(marker_angle, work_round_edge - marker_depth, upper_text, true, segment*marker_interval);
     // Create lower surface marker with gap
     CreateMarkerSlice(marker_angle, -(work_round_edge - marker_depth), lower_text, false);
   }
@@ -271,15 +270,22 @@ module CreateNumberText(marker_text) {
 }
 
 module CribbageHoleCylinders() {
-  // Calculate angle per hole to distribute evenly around the strip
-  angle_per_hole = -360 / cribbage_rows;  // Changed to negative for clockwise
-  
-  for(row = [0:cribbage_rows-1]) {
-    for(col = [0:cribbage_columns-1]) {
-      // Calculate angle for this hole (same as the strip generation)
-      hole_angle = row * angle_per_hole;
+  // Calculate angle per total segment of 5 holes
+  num_segments = cribbage_rows / marker_interval;
+  angle_per_segment = -360 / num_segments;
+
+  marker_margin_angle = -4;
+
+  angle_per_hole = (angle_per_segment - 2*marker_margin_angle) / (marker_interval-1); 
+   
+  for(segment = [0:num_segments-1]) {
+      segment_angle = segment * angle_per_segment;
       
-      // Calculate column offset to span the full width
+    for(row = [0:marker_interval-1]) {
+        for(col = [0:cribbage_columns-1]) {
+            hole_angle = segment_angle + marker_margin_angle + (row * angle_per_hole);
+            
+                  // Calculate column offset to span the full width
       // For multiple columns, distribute evenly across the full width
       col_offset = cribbage_columns > 1 ? 
         (col / (cribbage_columns - 1) - 0.5) * (width * 1.5) : 0;
@@ -292,6 +298,8 @@ module CribbageHoleCylinders() {
               rotate([90, 0, 0])  // Orient cylinder to go through the strip
                 CreateHoleCylinder();
     }
+
+  }      
   }
 }
 
