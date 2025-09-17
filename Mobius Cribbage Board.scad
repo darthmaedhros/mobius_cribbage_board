@@ -49,7 +49,7 @@ cribbage_columns = 4; // [1:6]
 cribbage_rows = 60; // [30:121]
 
 // Diameter of cribbage holes
-hole_diameter = 3.1; // [0.5:0.1:10.0]
+hole_diameter = 3.2; // [0.5:0.1:10.0]
 
 // Length of hole cylinders (should be longer than strip width)
 hole_length = 10; // [10:50]
@@ -67,10 +67,7 @@ groove_width = 0.9; // [0.2:0.1:2.0]
 // Length of groove segments (how long the cylinders are)
 groove_segment_length = 1.0; // [0.3:0.1:3.0]
 
-// Gap around markers 
-marker_gap_spacing = 4.0; // [0.1:0.1:10]
-
-/* [Marker Settings] */
+/* [Marker and Label Settings] */
 
 // Enable markers every N holes
 marker_interval = 5; // [1:10]
@@ -79,13 +76,25 @@ marker_interval = 5; // [1:10]
 marker_width = 1.2; // [0.2:0.1:2.0]
 
 // Height of marker lines (how tall/thick they are)
-marker_height = 1.0; // [0.1:0.1:5.0]
+marker_height = 1.2; // [0.1:0.1:5.0]
 
 // Depth of marker lines (how far they are inset into the surface)
 marker_depth = 0; // [0.0:0.05:0.5]
 
 // Length of marker lines (should span all columns plus extra)
 marker_length = width*2; // [15:40]
+
+// Label height in center of marker
+label_height = 5; // [0.1:.1:10]
+vertical_overlap = 1; // [0.1:.1:10]
+label_width = 10; // [0.1:.1:20]
+horizontal_overlap = 1.25; // [0.1:.1:10]
+
+top_intersection_diameter = 2.5*label_width; // [0.1:.1:10]
+side_intersection_diameter = 5.0; // [0.1:.1:10]
+corner_intersection_diameter = 4.5; // [0.1:.1:10]
+corner_offset = 1; // [0.1:0.1:10]
+
 
 /* [Hidden] */
 
@@ -234,19 +243,35 @@ module CreateMarkerSlice(marker_angle, surface_offset, marker_text, is_upper_sur
         translate([0, surface_offset, 0])  // Position on upper or lower surface
           rotate([90, 0, 0])  // Rotate marker 90 degrees around X-axis to lay flat
         {
-          CreateMarkerWithGap(row);
+            difference() {
+//          CreateMarkerWithGap(row);
+          CreateFancyMarker(row);
           // Add text directly on the strip surface
-          translate([0, 0, (is_upper_surface ? 0.5*marker_height : -0.5*marker_height)])
+          translate([0, 0, (is_upper_surface ? -.33*marker_height : 0.33*marker_height)])
             rotate([0,(is_upper_surface ? 1 : 0) * 180, 180])
             CreateNumberText(marker_text);
+            }
         }
+}
+
+
+module CreateFancyMarker(row) {
+    adjusted_length = marker_length + (2*square_overhang) - 2*(round_sharp_edge);
+    
+    hull() {
+        cylinder(h=marker_height, d=4*marker_width, center=true, $fn=12);
+
+        translate([-adjusted_length/2 + marker_width/2,0,0]) sphere(d=marker_height, $fn=12);
+
+        translate([adjusted_length/2 - marker_width/2,0,0]) sphere(d=marker_height, $fn=12);
+    }
 }
 
 module CreateMarkerWithGap(row) {
   // Create a marker line with a gap in the middle for numbers
   adjusted_length = marker_length + (2*square_overhang) - 2*(round_sharp_edge);
     
-  gap_width = (row == 0) ? adjusted_length * 0.525 : adjusted_length * 0.15;  // 30% of marker length for the gap
+  gap_width = (row == 0) ? adjusted_length * 0.65 : adjusted_length * 0.2;  // 30% of marker length for the gap
   segment_length = (adjusted_length - gap_width) / 2;
   
   // Left segment
@@ -261,7 +286,7 @@ module CreateMarkerWithGap(row) {
 module CreateNumberText(marker_text) {
   // Create 3D text on the strip surface
   rotate([0, 0, 180])  // Keep text readable
-    linear_extrude(height = marker_height)
+    linear_extrude(height = marker_height+.1)
       text(marker_text, 
            size = marker_width * 1.85,  // Scale text appropriately
            halign = "center", 
@@ -330,8 +355,8 @@ function reverse_exponential_angles(n_points, curve_factor=2) =
     ];
 
   
-  reverse_angles = reverse_exponential_angles(360/4.5,.7);  
-  angles = exponential_angles(360/4.5,.7);  
+  reverse_angles = reverse_exponential_angles(360/4,.60);  
+  angles = exponential_angles(360/4,.60);  
       
   union() {
       for(angle=angles) {  // Changed to go clockwise
